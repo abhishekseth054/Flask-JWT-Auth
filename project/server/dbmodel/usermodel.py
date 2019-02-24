@@ -1,4 +1,5 @@
 import datetime
+import jwt
 
 from project.server import app, db, bcrypt
 
@@ -69,7 +70,6 @@ class User(db.Model):
             return 'Signature expired. Please log in again.'
         except jwt.InvalidTokenError:
             return 'Invalid token. Please log in again.'
-
 
 class BlacklistToken(db.Model):
     """

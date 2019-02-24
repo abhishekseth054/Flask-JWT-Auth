@@ -3,12 +3,30 @@
 
 from flask import Blueprint, request, make_response, jsonify
 from flask.views import MethodView
+from functools import wraps
 
 from project.server import bcrypt, db
 from project.server.dbmodel.usermodel import User, BlacklistToken
 
 auth_blueprint = Blueprint('auth', __name__)
 
+def auth_required(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        auth_header = request.headers.get('Authorization')
+        if not auth_header:
+            return jsonify({'message' : 'header does not conatin the valid auth attribute!'}), 403
+        token = auth_header.split(" ")[1]
+        if not token:
+            return jsonify({'message' : 'Token is missing!'}), 403
+        try:
+            data = User.decode_auth_token(token)
+            # data = jwt.decode(token, app.config.get('SECRET_KEY'))
+        except:
+            return jsonify({'message' : 'Token is invalid!'}), 403
+        return f(*args, **kwargs)
+
+    return wrapper
 
 class RegisterAPI(MethodView):
     """
@@ -37,7 +55,7 @@ class RegisterAPI(MethodView):
                     'auth_token': auth_token.decode()
                 }
                 return make_response(jsonify(responseObject)), 201
-            except Exception as e:
+            except Exception:
                 responseObject = {
                     'status': 'fail',
                     'message': 'Some error occurred. Please try again.'
@@ -50,12 +68,12 @@ class RegisterAPI(MethodView):
             }
             return make_response(jsonify(responseObject)), 202
 
-
 class LoginAPI(MethodView):
     """
     User Login Resource
     """
     def post(self):
+        print("post login method")
         # get the post data
         post_data = request.get_json()
         try:
@@ -93,6 +111,7 @@ class UserAPI(MethodView):
     """
     User Resource
     """
+    @auth_required
     def get(self):
         # get the auth token
         auth_header = request.headers.get('Authorization')
